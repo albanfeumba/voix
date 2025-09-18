@@ -3,8 +3,23 @@ from gtts import gTTS
 import base64
 import tempfile
 import os
-import speech_recognition as sr
-from streamlit_mic_recorder import mic_recorder  # ⚡ composant pour enregistrement vocal
+
+# --- Reconnaissance vocale : on essaie d'abord SpeechRecognition ---
+try:
+    import speech_recognition as sr
+    SR_AVAILABLE = True
+except ImportError:
+    SR_AVAILABLE = False
+
+# --- Whisper fallback ---
+try:
+    import whisper
+    WHISPER_AVAILABLE = True
+    whisper_model = whisper.load_model("base")
+except ImportError:
+    WHISPER_AVAILABLE = False
+
+from streamlit_mic_recorder import mic_recorder  # composant pour enregistrement vocal
 
 # Configuration de la page
 st.set_page_config(
@@ -16,10 +31,7 @@ st.set_page_config(
 # Fonction pour générer l'audio et le convertir en base64
 def generate_audio_base64(text, language='fr'):
     try:
-        # Créer l'audio avec gTTS
         tts = gTTS(text=text, lang=language, slow=False)
-        
-        # Sauvegarde temporaire
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
             tts.save(tmp_file.name)
             with open(tmp_file.name, "rb") as audio_file:
@@ -33,7 +45,7 @@ def generate_audio_base64(text, language='fr'):
 
 # Fonction pour créer le lecteur audio HTML avec autoplay
 def audio_player_with_autoplay(audio_base64):
-    html_code = f"""
+    return f"""
     <audio id="myAudio" controls autoplay style="width: 100%;">
         <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
         Votre navigateur ne supporte pas l'élément audio.
@@ -47,26 +59,44 @@ def audio_player_with_autoplay(audio_base64):
         }});
     </script>
     """
-    return html_code
 
 # Fonction pour transcrire un enregistrement vocal
 def transcrire_audio(audio_bytes):
-    recognizer = sr.Recognizer()
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
-        f.write(audio_bytes)
-        fichier_temp = f.name
-    try:
-        with sr.AudioFile(fichier_temp) as source:
-            recognizer.adjust_for_ambient_noise(source)
-            audio_data = recognizer.record(source)
-        texte = recognizer.recognize_google(audio_data, language="fr-FR")
-        return texte
-    except sr.UnknownValueError:
-        return "⚠️ Désolé, je n’ai pas compris."
-    except sr.RequestError as e:
-        return f"❌ Erreur du service Google : {e}"
-    finally:
-        os.unlink(fichier_temp)
+    # --- Cas 1 : SpeechRecognition dispo ---
+    if SR_AVAILABLE:
+        recognizer = sr.Recognizer()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
+            f.write(audio_bytes)
+            fichier_temp = f.name
+        try:
+            with sr.AudioFile(fichier_temp) as source:
+                recognizer.adjust_for_ambient_noise(source)
+                audio_data = recognizer.record(source)
+            texte = recognizer.recognize_google(audio_data, language="fr-FR")
+            return texte
+        except sr.UnknownValueError:
+            return "⚠️ Désolé, je n’ai pas compris."
+        except sr.RequestError as e:
+            return f"❌ Erreur du service Google : {e}"
+        finally:
+            os.unlink(fichier_temp)
+
+    # --- Cas 2 : Whisper dispo ---
+    elif WHISPER_AVAILABLE:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
+            f.write(audio_bytes)
+            fichier_temp = f.name
+        try:
+            result = whisper_model.transcribe(fichier_temp, language="fr")
+            return result["text"]
+        except Exception as e:
+            return f"❌ Erreur Whisper : {e}"
+        finally:
+            os.unlink(fichier_temp)
+
+    # --- Cas 3 : aucun moteur ---
+    else:
+        return "❌ Aucun moteur de reconnaissance vocale disponible."
 
 # Interface principale
 def main():

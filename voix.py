@@ -5,7 +5,6 @@ import tempfile
 import os
 import io
 
-# --- Reconnaissance vocale ---
 try:
     import speech_recognition as sr
     SR_AVAILABLE = True
@@ -20,8 +19,8 @@ except ImportError:
     WHISPER_AVAILABLE = False
 
 from audiorecorder import audiorecorder
-import soundfile as sf
 import numpy as np
+import soundfile as sf
 
 # ---------------- CONFIG ----------------
 st.set_page_config(
@@ -45,7 +44,6 @@ def generate_audio_base64(text, language='fr'):
         st.error(f"Erreur synthèse vocale: {e}")
         return None, None
 
-
 def audio_player_with_autoplay(audio_base64):
     return f"""
     <audio id="myAudio" controls autoplay style="width: 100%;">
@@ -62,18 +60,18 @@ def audio_player_with_autoplay(audio_base64):
     </script>
     """
 
-
-def convert_to_wav_bytes(audio_data):
-    """Convertit numpy array ou bytes en bytes WAV."""
+def convert_audio_for_streamlit(audio_data):
+    """
+    Convertit l'audio pour st.audio :
+    - bytes -> return bytes
+    - numpy.ndarray -> return tuple (numpy_array, sample_rate)
+    """
     if isinstance(audio_data, bytes):
-        return audio_data
+        return audio_data, None
     elif isinstance(audio_data, np.ndarray):
-        with io.BytesIO() as buf:
-            sf.write(buf, audio_data, 44100, format="WAV")
-            return buf.getvalue()
+        return audio_data, 44100
     else:
-        raise ValueError("Format audio non supporté")
-
+        raise ValueError("Format audio non supporté pour st.audio")
 
 def transcrire_audio(audio_bytes):
     if SR_AVAILABLE:
@@ -105,10 +103,8 @@ def transcrire_audio(audio_bytes):
             return f"❌ Erreur Whisper : {e}"
         finally:
             os.unlink(fichier_temp)
-
     else:
         return "❌ Aucun moteur de reconnaissance vocale disponible."
-
 
 # ---------------- MAIN APP ----------------
 def main():
@@ -126,21 +122,31 @@ def main():
     audio = audiorecorder("Démarrer l'enregistrement", "Arrêter l'enregistrement")
 
     if audio is not None and len(audio) > 0:
-        # Convertir correctement en bytes WAV
-        audio_bytes = convert_to_wav_bytes(audio)
-        st.audio(audio_bytes, format="audio/wav", start_time=0)
+        audio_for_st, sample_rate = convert_audio_for_streamlit(audio)
 
-        # Transcription
+        if sample_rate is not None:
+            # numpy array
+            st.audio(audio_for_st, format="audio/wav", sample_rate=sample_rate)
+        else:
+            # bytes
+            st.audio(audio_for_st, format="audio/wav")
+
+        # Transcription : besoin de bytes
+        if isinstance(audio_for_st, np.ndarray):
+            with io.BytesIO() as buf:
+                sf.write(buf, audio_for_st, 44100, format="WAV")
+                audio_bytes = buf.getvalue()
+        else:
+            audio_bytes = audio_for_st
+
         user_text = transcrire_audio(audio_bytes)
         st.session_state.user_text = user_text
         st.success(f"🗣️ Vous avez dit : **{user_text}**")
 
-        # Génération de la réponse
         response = f"Bonjour ! J’ai bien entendu : {user_text}. Comment puis-je vous aider aujourd’hui ?"
         st.subheader("🤖 Réponse :")
         st.info(response)
 
-        # Génération audio
         with st.spinner("🔄 Génération de la réponse audio..."):
             audio_base64, audio_bytes_mp3 = generate_audio_base64(response)
             if audio_base64:
@@ -160,7 +166,6 @@ def main():
             file_name="reponse_assistant.mp3",
             mime="audio/mp3"
         )
-
 
 if __name__ == "__main__":
     main()

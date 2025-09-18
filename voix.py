@@ -3,6 +3,7 @@ from gtts import gTTS
 import base64
 import tempfile
 import os
+import io
 
 # --- Reconnaissance vocale ---
 try:
@@ -18,7 +19,9 @@ try:
 except ImportError:
     WHISPER_AVAILABLE = False
 
-from audiorecorder import audiorecorder  # composant Streamlit pour micro
+from audiorecorder import audiorecorder
+import soundfile as sf
+import numpy as np
 
 # ---------------- CONFIG ----------------
 st.set_page_config(
@@ -58,6 +61,18 @@ def audio_player_with_autoplay(audio_base64):
         }});
     </script>
     """
+
+
+def convert_to_wav_bytes(audio_data):
+    """Convertit numpy array ou bytes en bytes WAV."""
+    if isinstance(audio_data, bytes):
+        return audio_data
+    elif isinstance(audio_data, np.ndarray):
+        with io.BytesIO() as buf:
+            sf.write(buf, audio_data, 44100, format="WAV")
+            return buf.getvalue()
+    else:
+        raise ValueError("Format audio non supporté")
 
 
 def transcrire_audio(audio_bytes):
@@ -110,24 +125,22 @@ def main():
     st.subheader("🎙️ Parlez maintenant :")
     audio = audiorecorder("Démarrer l'enregistrement", "Arrêter l'enregistrement")
 
-    # --- Vérification et conversion ---
     if audio is not None and len(audio) > 0:
-        # audiorecorder renvoie déjà des bytes (ou un dict selon version)
-        if isinstance(audio, dict) and "wav" in audio:
-            audio_bytes = audio["wav"]
-        else:
-            audio_bytes = audio  # bytes direct
+        # Convertir correctement en bytes WAV
+        audio_bytes = convert_to_wav_bytes(audio)
+        st.audio(audio_bytes, format="audio/wav", start_time=0)
 
-        st.audio(audio_bytes, format="audio/wav")
-
+        # Transcription
         user_text = transcrire_audio(audio_bytes)
         st.session_state.user_text = user_text
         st.success(f"🗣️ Vous avez dit : **{user_text}**")
 
+        # Génération de la réponse
         response = f"Bonjour ! J’ai bien entendu : {user_text}. Comment puis-je vous aider aujourd’hui ?"
         st.subheader("🤖 Réponse :")
         st.info(response)
 
+        # Génération audio
         with st.spinner("🔄 Génération de la réponse audio..."):
             audio_base64, audio_bytes_mp3 = generate_audio_base64(response)
             if audio_base64:

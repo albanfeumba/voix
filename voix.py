@@ -7,6 +7,7 @@ import io
 import numpy as np
 import soundfile as sf
 
+# --- Reconnaissance vocale ---
 try:
     import speech_recognition as sr
     SR_AVAILABLE = True
@@ -20,7 +21,7 @@ try:
 except ImportError:
     WHISPER_AVAILABLE = False
 
-from audiorecorder import audiorecorder  # Composant pour enregistrement navigateur
+from audiorecorder import audiorecorder  # Composant pour micro navigateur
 
 # ---------------- CONFIG ----------------
 st.set_page_config(
@@ -31,6 +32,7 @@ st.set_page_config(
 
 # ---------------- UTILS ----------------
 def generate_audio_base64(text, language='fr'):
+    """Convertit un texte en audio MP3 + base64."""
     try:
         tts = gTTS(text=text, lang=language, slow=False)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
@@ -45,6 +47,7 @@ def generate_audio_base64(text, language='fr'):
         return None, None
 
 def audio_player_with_autoplay(audio_base64):
+    """Lecteur audio HTML avec autoplay."""
     return f"""
     <audio id="myAudio" controls autoplay style="width: 100%;">
         <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
@@ -98,6 +101,7 @@ def main():
     st.title("🎤 Assistant Vocal - Parlez & Écoutez")
     st.markdown("**Exprimez-vous vocalement et écoutez la réponse directement !**")
 
+    # Initialisation session_state
     if "audio_base64" not in st.session_state:
         st.session_state.audio_base64 = None
     if "audio_bytes" not in st.session_state:
@@ -108,8 +112,8 @@ def main():
     st.subheader("🎙️ Parlez maintenant :")
     audio = audiorecorder("Démarrer l'enregistrement", "Arrêter l'enregistrement")
 
-    if audio is not None and hasattr(audio, "wav_data") and audio.wav_data is not None:
-        audio_bytes = audio.wav_data  # ✅ Les vrais bytes WAV
+    if audio is not None and hasattr(audio, "wav_data") and audio.wav_data:
+        audio_bytes = audio.wav_data
         st.audio(audio_bytes, format="audio/wav")
 
         # Transcription
@@ -132,6 +136,10 @@ def main():
                 st.components.v1.html(audio_player_with_autoplay(audio_base64), height=80)
                 st.audio(audio_bytes_mp3, format="audio/mp3")
 
+    else:
+        st.warning("⚠️ Aucun son enregistré. Vérifiez la permission du micro et parlez après avoir cliqué sur 'Démarrer l'enregistrement'.")
+
+    # Réécoute et téléchargement
     if st.session_state.audio_base64:
         st.markdown("---")
         st.subheader("🎵 Réécouter la dernière réponse")
@@ -142,6 +150,7 @@ def main():
             file_name="reponse_assistant.mp3",
             mime="audio/mp3"
         )
+
 
 if __name__ == "__main__":
     main()

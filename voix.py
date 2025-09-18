@@ -4,14 +4,13 @@ import base64
 import tempfile
 import os
 
-# --- Reconnaissance vocale : on essaie d'abord SpeechRecognition ---
+# --- Reconnaissance vocale ---
 try:
     import speech_recognition as sr
     SR_AVAILABLE = True
 except ImportError:
     SR_AVAILABLE = False
 
-# --- Whisper fallback ---
 try:
     import whisper
     WHISPER_AVAILABLE = True
@@ -19,8 +18,7 @@ try:
 except ImportError:
     WHISPER_AVAILABLE = False
 
-# ✅ bon import (au lieu de streamlit_mic_recorder)
-from audiorecorder import audiorecorder  
+from audiorecorder import audiorecorder  # composant Streamlit pour micro
 
 # ---------------- CONFIG ----------------
 st.set_page_config(
@@ -31,23 +29,21 @@ st.set_page_config(
 
 # ---------------- UTILS ----------------
 def generate_audio_base64(text, language='fr'):
-    """Convertit un texte en audio MP3 (gTTS) + base64 pour Streamlit."""
     try:
         tts = gTTS(text=text, lang=language, slow=False)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
             tts.save(tmp_file.name)
-            with open(tmp_file.name, "rb") as audio_file:
-                audio_bytes = audio_file.read()
+            with open(tmp_file.name, "rb") as f:
+                audio_bytes = f.read()
                 audio_base64 = base64.b64encode(audio_bytes).decode()
         os.unlink(tmp_file.name)
         return audio_base64, audio_bytes
     except Exception as e:
-        st.error(f"Erreur de synthèse vocale: {e}")
+        st.error(f"Erreur synthèse vocale: {e}")
         return None, None
 
 
 def audio_player_with_autoplay(audio_base64):
-    """Lecteur audio HTML qui force autoplay (plus fiable que st.audio seul)."""
     return f"""
     <audio id="myAudio" controls autoplay style="width: 100%;">
         <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
@@ -65,7 +61,6 @@ def audio_player_with_autoplay(audio_base64):
 
 
 def transcrire_audio(audio_bytes):
-    """Transcrit l’audio en texte avec SpeechRecognition ou Whisper."""
     if SR_AVAILABLE:
         recognizer = sr.Recognizer()
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
@@ -105,7 +100,6 @@ def main():
     st.title("🎤 Assistant Vocal - Parlez & Écoutez")
     st.markdown("**Exprimez-vous vocalement et écoutez la réponse directement !**")
 
-    # Init session state
     if "audio_base64" not in st.session_state:
         st.session_state.audio_base64 = None
     if "audio_bytes" not in st.session_state:
@@ -113,35 +107,36 @@ def main():
     if "user_text" not in st.session_state:
         st.session_state.user_text = ""
 
-    # --- Enregistrement vocal ---
     st.subheader("🎙️ Parlez maintenant :")
-    audio = audiorecorder("🎙️ Démarrer l'enregistrement", "⏹️ Arrêter")
+    audio = audiorecorder("Démarrer l'enregistrement", "Arrêter l'enregistrement")
 
-    if len(audio) > 0:  # un enregistrement est dispo
-        audio_bytes = audio.export().read()  # conversion en bytes
+    # --- Vérification et conversion ---
+    if audio is not None and len(audio) > 0:
+        # audiorecorder renvoie déjà des bytes (ou un dict selon version)
+        if isinstance(audio, dict) and "wav" in audio:
+            audio_bytes = audio["wav"]
+        else:
+            audio_bytes = audio  # bytes direct
+
         st.audio(audio_bytes, format="audio/wav")
 
-        # Transcription
         user_text = transcrire_audio(audio_bytes)
         st.session_state.user_text = user_text
         st.success(f"🗣️ Vous avez dit : **{user_text}**")
 
-        # Génération de la réponse
         response = f"Bonjour ! J’ai bien entendu : {user_text}. Comment puis-je vous aider aujourd’hui ?"
         st.subheader("🤖 Réponse :")
         st.info(response)
 
-        # Génération audio
         with st.spinner("🔄 Génération de la réponse audio..."):
-            audio_base64, audio_bytes = generate_audio_base64(response)
+            audio_base64, audio_bytes_mp3 = generate_audio_base64(response)
             if audio_base64:
                 st.session_state.audio_base64 = audio_base64
-                st.session_state.audio_bytes = audio_bytes
+                st.session_state.audio_bytes = audio_bytes_mp3
                 st.success("✅ Audio généré ! Écoutez ci-dessous ↓")
                 st.components.v1.html(audio_player_with_autoplay(audio_base64), height=80)
-                st.audio(audio_bytes, format="audio/mp3")
+                st.audio(audio_bytes_mp3, format="audio/mp3")
 
-    # --- Réécoute et téléchargement ---
     if st.session_state.audio_base64:
         st.markdown("---")
         st.subheader("🎵 Réécouter la dernière réponse")

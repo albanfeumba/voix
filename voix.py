@@ -19,17 +19,19 @@ try:
 except ImportError:
     WHISPER_AVAILABLE = False
 
-#from streamlit_mic_recorder import mic_recorder  # composant pour enregistrement vocal
+# ✅ bon import (au lieu de streamlit_mic_recorder)
+from audiorecorder import audiorecorder  
 
-# Configuration de la page
+# ---------------- CONFIG ----------------
 st.set_page_config(
     page_title="Assistant Vocal - Écoute Directe",
     page_icon="🎤",
     layout="centered"
 )
 
-# Fonction pour générer l'audio et le convertir en base64
+# ---------------- UTILS ----------------
 def generate_audio_base64(text, language='fr'):
+    """Convertit un texte en audio MP3 (gTTS) + base64 pour Streamlit."""
     try:
         tts = gTTS(text=text, lang=language, slow=False)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
@@ -43,8 +45,9 @@ def generate_audio_base64(text, language='fr'):
         st.error(f"Erreur de synthèse vocale: {e}")
         return None, None
 
-# Fonction pour créer le lecteur audio HTML avec autoplay
+
 def audio_player_with_autoplay(audio_base64):
+    """Lecteur audio HTML qui force autoplay (plus fiable que st.audio seul)."""
     return f"""
     <audio id="myAudio" controls autoplay style="width: 100%;">
         <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
@@ -60,9 +63,9 @@ def audio_player_with_autoplay(audio_base64):
     </script>
     """
 
-# Fonction pour transcrire un enregistrement vocal
+
 def transcrire_audio(audio_bytes):
-    # --- Cas 1 : SpeechRecognition dispo ---
+    """Transcrit l’audio en texte avec SpeechRecognition ou Whisper."""
     if SR_AVAILABLE:
         recognizer = sr.Recognizer()
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
@@ -81,7 +84,6 @@ def transcrire_audio(audio_bytes):
         finally:
             os.unlink(fichier_temp)
 
-    # --- Cas 2 : Whisper dispo ---
     elif WHISPER_AVAILABLE:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
             f.write(audio_bytes)
@@ -94,16 +96,16 @@ def transcrire_audio(audio_bytes):
         finally:
             os.unlink(fichier_temp)
 
-    # --- Cas 3 : aucun moteur ---
     else:
         return "❌ Aucun moteur de reconnaissance vocale disponible."
 
-# Interface principale
+
+# ---------------- MAIN APP ----------------
 def main():
     st.title("🎤 Assistant Vocal - Parlez & Écoutez")
     st.markdown("**Exprimez-vous vocalement et écoutez la réponse directement !**")
 
-    # Initialisation
+    # Init session state
     if "audio_base64" not in st.session_state:
         st.session_state.audio_base64 = None
     if "audio_bytes" not in st.session_state:
@@ -113,11 +115,14 @@ def main():
 
     # --- Enregistrement vocal ---
     st.subheader("🎙️ Parlez maintenant :")
-    audio = mic_recorder(start_prompt="Démarrer l'enregistrement", stop_prompt="Arrêter", just_once=True)
+    audio = audiorecorder("🎙️ Démarrer l'enregistrement", "⏹️ Arrêter")
 
-    if audio:  # Quand un enregistrement est dispo
-        st.audio(audio["bytes"], format="audio/wav")
-        user_text = transcrire_audio(audio["bytes"])
+    if len(audio) > 0:  # un enregistrement est dispo
+        audio_bytes = audio.export().read()  # conversion en bytes
+        st.audio(audio_bytes, format="audio/wav")
+
+        # Transcription
+        user_text = transcrire_audio(audio_bytes)
         st.session_state.user_text = user_text
         st.success(f"🗣️ Vous avez dit : **{user_text}**")
 
@@ -126,7 +131,7 @@ def main():
         st.subheader("🤖 Réponse :")
         st.info(response)
 
-        # Génération audio de la réponse
+        # Génération audio
         with st.spinner("🔄 Génération de la réponse audio..."):
             audio_base64, audio_bytes = generate_audio_base64(response)
             if audio_base64:
@@ -148,6 +153,6 @@ def main():
             mime="audio/mp3"
         )
 
+
 if __name__ == "__main__":
     main()
-

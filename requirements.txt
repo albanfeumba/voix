@@ -1,22 +1,22 @@
+# ---- Core ----
+streamlit==1.28.1              # Framework web
+numpy>=1.24.0                  # Manipulation numérique
+soundfile>=0.12.1              # Lecture/écriture audio WAV
 
-streamlit
-gTTS
-SpeechRecognition
-streamlit-audiorecorder
-numpy
-soundfile
-pydub
-# optional
-# sounddevice
+# ---- Speech recognition ----
+SpeechRecognition==3.10.0      # Reconnaissance vocale (Google Web Speech API)
 
+# ---- Text-to-Speech ----
+gTTS==2.3.2                    # Synthèse vocale via Google TTS
+# pyttsx3==2.90                 # (Optionnel, TTS hors ligne, mais moins fluide)
 
-streamlit==1.28.1
-SpeechRecognition==3.10.0
-pyttsx3==2.90
-# PyAudio est optionnel - on utilise une alternative
+# ---- Audio enregistrement navigateur ----
+streamlit-audiorecorder==0.0.2 # Composant pour enregistrer depuis le navigateur
+# audio-recorder-streamlit==0.0.8  # (Alternative, choisir l’un OU l’autre, pas les deux)
 
-streamlit==1.28.1
-pyttsx3==2.90
-audio-recorder-streamlit==0.0.8
-gtts==2.3.2
+# ---- Utilitaires audio ----
+pydub>=0.25.1                  # Conversion audio (nécessite ffmpeg installé)
 
+# ---- Optionnel (enregistrement micro côté serveur) ----
+# sounddevice>=0.4.6
+# PyAudio>=0.2.11

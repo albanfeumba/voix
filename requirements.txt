@@ -24,4 +24,5 @@ pydub>=0.25.1                  # Conversion audio (nécessite ffmpeg installé)
 # ---- Option moderne (remplace SpeechRecognition si besoin) ----
 openai-whisper>=20231117        # Whisper local d'OpenAI (PyTorch requis)
 streamlit-webrtc==0.75.0
+torch>=2.0.0
 

@@ -7,7 +7,6 @@ import io
 import numpy as np
 import soundfile as sf
 
-# --- Reconnaissance vocale ---
 try:
     import speech_recognition as sr
     SR_AVAILABLE = True
@@ -21,7 +20,7 @@ try:
 except ImportError:
     WHISPER_AVAILABLE = False
 
-from audiorecorder import audiorecorder  # Composant d'enregistrement audio
+from audiorecorder import audiorecorder  # Composant pour enregistrement navigateur
 
 # ---------------- CONFIG ----------------
 st.set_page_config(
@@ -32,7 +31,6 @@ st.set_page_config(
 
 # ---------------- UTILS ----------------
 def generate_audio_base64(text, language='fr'):
-    """Convertit un texte en audio MP3 (gTTS) + base64 pour Streamlit."""
     try:
         tts = gTTS(text=text, lang=language, slow=False)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
@@ -46,9 +44,7 @@ def generate_audio_base64(text, language='fr'):
         st.error(f"Erreur synthèse vocale: {e}")
         return None, None
 
-
 def audio_player_with_autoplay(audio_base64):
-    """Lecteur audio HTML avec autoplay."""
     return f"""
     <audio id="myAudio" controls autoplay style="width: 100%;">
         <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
@@ -63,27 +59,6 @@ def audio_player_with_autoplay(audio_base64):
         }});
     </script>
     """
-
-
-def convert_audio_for_streamlit(audio_data):
-    """
-    Convertit l'audio pour st.audio et transcription :
-    - bytes -> return bytes
-    - numpy.ndarray -> return tuple (numpy_array, sample_rate)
-    """
-    if isinstance(audio_data, bytes):
-        return audio_data, None
-    elif isinstance(audio_data, np.ndarray):
-        # Convertir float ou autre type en int16
-        if audio_data.dtype != np.int16:
-            if np.issubdtype(audio_data.dtype, np.floating):
-                audio_data = (audio_data * 32767).astype(np.int16)
-            else:
-                audio_data = audio_data.astype(np.int16)
-        return audio_data, 44100
-    else:
-        raise ValueError("Format audio non supporté pour st.audio")
-
 
 def transcrire_audio(audio_bytes):
     """Transcrit l’audio en texte avec SpeechRecognition ou Whisper."""
@@ -104,7 +79,6 @@ def transcrire_audio(audio_bytes):
             return f"❌ Erreur du service Google : {e}"
         finally:
             os.unlink(fichier_temp)
-
     elif WHISPER_AVAILABLE:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
             f.write(audio_bytes)
@@ -119,13 +93,11 @@ def transcrire_audio(audio_bytes):
     else:
         return "❌ Aucun moteur de reconnaissance vocale disponible."
 
-
-# ---------------- MAIN APP ----------------
+# ---------------- MAIN ----------------
 def main():
     st.title("🎤 Assistant Vocal - Parlez & Écoutez")
     st.markdown("**Exprimez-vous vocalement et écoutez la réponse directement !**")
 
-    # Initialisation session_state
     if "audio_base64" not in st.session_state:
         st.session_state.audio_base64 = None
     if "audio_bytes" not in st.session_state:
@@ -133,26 +105,12 @@ def main():
     if "user_text" not in st.session_state:
         st.session_state.user_text = ""
 
-    # --- Enregistrement vocal ---
     st.subheader("🎙️ Parlez maintenant :")
     audio = audiorecorder("Démarrer l'enregistrement", "Arrêter l'enregistrement")
 
-    if audio is not None and len(audio) > 0:
-        audio_for_st, sample_rate = convert_audio_for_streamlit(audio)
-
-        # Affichage audio
-        if sample_rate is not None:
-            st.audio(audio_for_st, format="audio/wav", sample_rate=sample_rate)
-        else:
-            st.audio(audio_for_st, format="audio/wav")
-
-        # Préparer bytes pour transcription
-        if isinstance(audio_for_st, np.ndarray):
-            with io.BytesIO() as buf:
-                sf.write(buf, audio_for_st, 44100, format="WAV", subtype='PCM_16')
-                audio_bytes = buf.getvalue()
-        else:
-            audio_bytes = audio_for_st
+    if audio is not None and hasattr(audio, "wav_data") and audio.wav_data is not None:
+        audio_bytes = audio.wav_data  # ✅ Les vrais bytes WAV
+        st.audio(audio_bytes, format="audio/wav")
 
         # Transcription
         user_text = transcrire_audio(audio_bytes)
@@ -164,7 +122,7 @@ def main():
         st.subheader("🤖 Réponse :")
         st.info(response)
 
-        # Génération audio
+        # Génération audio réponse
         with st.spinner("🔄 Génération de la réponse audio..."):
             audio_base64, audio_bytes_mp3 = generate_audio_base64(response)
             if audio_base64:
@@ -174,7 +132,6 @@ def main():
                 st.components.v1.html(audio_player_with_autoplay(audio_base64), height=80)
                 st.audio(audio_bytes_mp3, format="audio/mp3")
 
-    # --- Réécoute et téléchargement ---
     if st.session_state.audio_base64:
         st.markdown("---")
         st.subheader("🎵 Réécouter la dernière réponse")
@@ -185,7 +142,6 @@ def main():
             file_name="reponse_assistant.mp3",
             mime="audio/mp3"
         )
-
 
 if __name__ == "__main__":
     main()

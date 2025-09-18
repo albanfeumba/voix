@@ -11,8 +11,8 @@ gTTS==2.3.2                    # Synthèse vocale via Google TTS
 # pyttsx3==2.90                 # (Optionnel, TTS hors ligne, mais moins fluide)
 
 # ---- Audio enregistrement navigateur ----
-streamlit-audiorecorder==0.0.2 # Composant pour enregistrer depuis le navigateur
-# audio-recorder-streamlit==0.0.8  # (Alternative, choisir l’un OU l’autre, pas les deux)
+#streamlit-audiorecorder==0.0.2 # Composant pour enregistrer depuis le navigateur
+audio-recorder-streamlit==0.0.8  # (Alternative, choisir l’un OU l’autre, pas les deux)
 
 # ---- Utilitaires audio ----
 pydub>=0.25.1                  # Conversion audio (nécessite ffmpeg installé)

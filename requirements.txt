@@ -21,5 +21,5 @@ pydub>=0.25.1                  # Conversion audio (nécessite ffmpeg installé)
 # sounddevice>=0.4.6
 # PyAudio>=0.2.11
 
-aifc-py==3.13.0
-
+# ---- Option moderne (remplace SpeechRecognition si besoin) ----
+openai-whisper>=20231117        # Whisper local d'OpenAI (PyTorch requis)

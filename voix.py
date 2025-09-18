@@ -19,7 +19,7 @@ try:
 except ImportError:
     WHISPER_AVAILABLE = False
 
-from streamlit_mic_recorder import mic_recorder  # composant pour enregistrement vocal
+#from streamlit_mic_recorder import mic_recorder  # composant pour enregistrement vocal
 
 # Configuration de la page
 st.set_page_config(
@@ -150,3 +150,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

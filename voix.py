@@ -1,46 +1,22 @@
 import streamlit as st
-import pyttsx3
 import threading
 import time
 from datetime import datetime
+import os
 import sys
 
 # Configuration de la page
 st.set_page_config(
-    page_title="Assistant Vocal",
+    page_title="Assistant Vocal Interactif",
     page_icon="🎤",
     layout="centered"
 )
 
-# Initialisation du synthétiseur vocal
-def init_tts():
-    try:
-        engine = pyttsx3.init()
-        # Configuration de la voix
-        voices = engine.getProperty('voices')
-        if voices:
-            engine.setProperty('voice', voices[0].id)
-        engine.setProperty('rate', 150)
-        return engine
-    except Exception as e:
-        st.warning(f"Synthèse vocale limitée: {e}")
-        return None
-
-# Fonction pour parler
-def speak(text, engine):
-    if engine:
-        try:
-            engine.say(text)
-            engine.runAndWait()
-        except Exception as e:
-            st.error(f"Erreur de synthèse: {e}")
-    else:
-        st.info(f"Réponse textuelle: {text}")
-
-# Simulation de reconnaissance vocale (mode texte uniquement)
-def simulate_speech_recognition():
-    st.info("🎤 Mode simulation - Utilisez la zone de texte ci-dessous")
-    return get_text_input()
+# Fonction pour simuler la synthèse vocale (texte seulement)
+def speak(text):
+    st.info(f"🔊 Réponse vocale simulée: {text}")
+    # Dans un environnement réel, on utiliserait pyttsx3
+    # mais on le retire pour éviter les problèmes de dépendances
 
 # Entrée textuelle
 def get_text_input():
@@ -53,10 +29,6 @@ def get_text_input():
 def main():
     st.title("🎤 Assistant Vocal Interactif")
     st.markdown("Utilisez la zone de texte pour communiquer avec l'assistant!")
-    
-    # Initialisation de l'engine TTS
-    if 'tts_engine' not in st.session_state:
-        st.session_state.tts_engine = init_tts()
     
     # Section de saisie
     st.subheader("💬 Votre message:")
@@ -75,15 +47,8 @@ def main():
             st.subheader("🤖 Réponse:")
             st.write(f"**{response}**")
             
-            # Réponse vocale
-            if st.session_state.tts_engine:
-                threading.Thread(
-                    target=speak, 
-                    args=(response, st.session_state.tts_engine),
-                    daemon=True
-                ).start()
-            else:
-                st.info("La synthèse vocale n'est pas disponible sur cette plateforme")
+            # Réponse vocale simulée
+            speak(response)
         else:
             st.warning("Veuillez taper un message d'abord!")
     
@@ -93,14 +58,9 @@ def main():
     **Instructions:**
     - Tapez votre message dans la zone de texte
     - Cliquez sur le bouton **Envoyer**
-    - L'assistant répondra vocalement (si supporté)
+    - L'assistant répondra en affichant la réponse
     - Fonctionne sur toutes les plateformes
     """)
-    
-    # Debug info
-    with st.expander("Informations techniques"):
-        st.write(f"Python version: {sys.version}")
-        st.write(f"Platform: {sys.platform}")
 
 if __name__ == "__main__":
     main()

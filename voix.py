@@ -1,10 +1,8 @@
 import streamlit as st
-import speech_recognition as sr
 import pyttsx3
 import threading
 import time
 from datetime import datetime
-import os
 import sys
 
 # Configuration de la page
@@ -39,35 +37,14 @@ def speak(text, engine):
     else:
         st.info(f"Réponse textuelle: {text}")
 
-# Fonction de reconnaissance vocale avec fallback
-def recognize_speech():
-    recognizer = sr.Recognizer()
-    
-    try:
-        # Essayer d'abord sans microphone (pour tests)
-        with sr.Microphone() as source:
-            st.info("🎤 Écoute en cours... Parlez maintenant!")
-            recognizer.adjust_for_ambient_noise(source, duration=1)
-            try:
-                audio = recognizer.listen(source, timeout=5, phrase_time_limit=8)
-            except sr.WaitTimeoutError:
-                return "Délai d'attente dépassé. Veuillez réessayer."
-    except (OSError, AttributeError):
-        # Fallback: entrée textuelle si microphone indisponible
-        st.warning("Microphone non disponible. Utilisation du mode texte.")
-        return get_text_input()
-    
-    try:
-        text = recognizer.recognize_google(audio, language='fr-FR')
-        return text
-    except sr.UnknownValueError:
-        return "Je n'ai pas compris ce que vous avez dit."
-    except sr.RequestError:
-        return "Erreur de service de reconnaissance vocale."
+# Simulation de reconnaissance vocale (mode texte uniquement)
+def simulate_speech_recognition():
+    st.info("🎤 Mode simulation - Utilisez la zone de texte ci-dessous")
+    return get_text_input()
 
-# Fallback pour entrée textuelle
+# Entrée textuelle
 def get_text_input():
-    text_input = st.text_input("Parlez-moi (tapez votre message):", "")
+    text_input = st.text_input("Tapez votre message:", "", key="text_input")
     if text_input:
         return text_input
     return "Aucune entrée détectée"
@@ -75,55 +52,49 @@ def get_text_input():
 # Interface Streamlit
 def main():
     st.title("🎤 Assistant Vocal Interactif")
-    st.markdown("Cliquez sur le bouton **Run** pour parler et obtenir une réponse!")
+    st.markdown("Utilisez la zone de texte pour communiquer avec l'assistant!")
     
     # Initialisation de l'engine TTS
     if 'tts_engine' not in st.session_state:
         st.session_state.tts_engine = init_tts()
     
-    # Vérification des dépendances
-    try:
-        sr.Microphone()
-        st.success("✅ Microphone détecté")
-    except:
-        st.warning("⚠️ Microphone non disponible - Mode texte activé")
+    # Section de saisie
+    st.subheader("💬 Votre message:")
+    user_input = get_text_input()
     
-    # Bouton principal
-    if st.button("🎤 Run", use_container_width=True, type="primary"):
-        with st.spinner("Écoute en cours..."):
-            user_input = recognize_speech()
-        
-        # Affichage de l'entrée utilisateur
-        st.subheader("🎤 Vous avez dit:")
-        st.write(f"**{user_input}**")
-        
-        # Génération de la réponse
-        if any(phrase in user_input.lower() for phrase in ["je n'ai pas compris", "délai d'attente", "aucune entrée"]):
-            response = "Je n'ai pas bien compris votre message. Pouvez-vous répéter?"
-        else:
+    # Bouton pour envoyer
+    if st.button("🚀 Envoyer", use_container_width=True, type="primary"):
+        if user_input and user_input != "Aucune entrée détectée":
+            # Affichage de l'entrée utilisateur
+            st.subheader("🎤 Vous avez dit:")
+            st.write(f"**{user_input}**")
+            
+            # Génération de la réponse
             response = f"J'ai bien reçu votre message: '{user_input}'. Comment puis-je vous aider aujourd'hui?"
-        
-        st.subheader("🤖 Réponse:")
-        st.write(f"**{response}**")
-        
-        # Réponse vocale
-        if st.session_state.tts_engine:
-            threading.Thread(
-                target=speak, 
-                args=(response, st.session_state.tts_engine),
-                daemon=True
-            ).start()
+            
+            st.subheader("🤖 Réponse:")
+            st.write(f"**{response}**")
+            
+            # Réponse vocale
+            if st.session_state.tts_engine:
+                threading.Thread(
+                    target=speak, 
+                    args=(response, st.session_state.tts_engine),
+                    daemon=True
+                ).start()
+            else:
+                st.info("La synthèse vocale n'est pas disponible sur cette plateforme")
         else:
-            st.info("La synthèse vocale n'est pas disponible sur cette plateforme")
+            st.warning("Veuillez taper un message d'abord!")
     
     # Section d'information
     st.markdown("---")
     st.info("""
     **Instructions:**
-    - Cliquez sur le bouton **Run**
-    - Parlez clairement dans votre microphone
-    - L'assistant répondra vocalement
-    - Mode texte disponible si microphone indisponible
+    - Tapez votre message dans la zone de texte
+    - Cliquez sur le bouton **Envoyer**
+    - L'assistant répondra vocalement (si supporté)
+    - Fonctionne sur toutes les plateformes
     """)
     
     # Debug info

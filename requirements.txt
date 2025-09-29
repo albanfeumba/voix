@@ -26,3 +26,17 @@ openai-whisper>=20231117        # Whisper local d'OpenAI (PyTorch requis)
 streamlit-webrtc==0.75.0
 torch>=2.0.0
 
+
+
+requests>=2.31.0
+python-dotenv>=1.0.0
+gtts>=2.3.2
+langdetect>=1.0.9
+sounddevice>=0.4.6
+scipy>=1.13.0
+numpy>=1.26.4
+SpeechRecognition>=3.10.0
+streamlit>=1.33.0
+PyMuPDF>=1.23.25   # fitz
+reportlab>=4.0.7
+importlib-metadata>=6.11.0   # pour compatibilité importlib

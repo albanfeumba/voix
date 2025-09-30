@@ -1,7 +1,6 @@
 # ---- Core ----
 streamlit>=1.28.1
 numpy>=1.24.0
-soundfile>=0.12.1
 scipy>=1.13.0
 requests>=2.31.0
 python-dotenv>=1.0.0
@@ -19,16 +18,11 @@ audio-recorder-streamlit>=0.0.8
 # ---- Utilitaires audio ----
 pydub>=0.25.1
 
-# ---- Optionnel (enregistrement micro côté serveur) ----
-sounddevice>=0.4.6
-# PyAudio>=0.2.11
-
 # ---- Option moderne (remplace SpeechRecognition si besoin) ----
 openai-whisper>=20231117
 torch>=2.0.0
 
 # ---- Streamlit WebRTC ----
-# La version 0.75.0 n'existe pas, installe la dernière compatible avec ta version Python :
 streamlit-webrtc
 
 # ---- PDF et rapport ----

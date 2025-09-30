@@ -1,53 +1,39 @@
-streamlit
-python-dotenv
-requests
-numpy
-sounddevice
-scipy
-
-
-
-
-
 # ---- Core ----
-streamlit==1.28.1              # Framework web
-numpy>=1.24.0                  # Manipulation numérique
-soundfile>=0.12.1              # Lecture/écriture audio WAV
+streamlit>=1.28.1
+numpy>=1.24.0
+soundfile>=0.12.1
+scipy>=1.13.0
+requests>=2.31.0
+python-dotenv>=1.0.0
 
 # ---- Speech recognition ----
-SpeechRecognition==3.10.0      # Reconnaissance vocale (Google Web Speech API)
+SpeechRecognition>=3.10.0
+langdetect>=1.0.9
 
 # ---- Text-to-Speech ----
-gTTS==2.3.2                    # Synthèse vocale via Google TTS
-# pyttsx3==2.90                 # (Optionnel, TTS hors ligne, mais moins fluide)
+gTTS>=2.3.2
 
 # ---- Audio enregistrement navigateur ----
-#streamlit-audiorecorder==0.0.2 # Composant pour enregistrer depuis le navigateur
-audio-recorder-streamlit==0.0.8  # (Alternative, choisir l’un OU l’autre, pas les deux)
+audio-recorder-streamlit>=0.0.8
 
 # ---- Utilitaires audio ----
-pydub>=0.25.1                  # Conversion audio (nécessite ffmpeg installé)
+pydub>=0.25.1
 
 # ---- Optionnel (enregistrement micro côté serveur) ----
-# sounddevice>=0.4.6
+sounddevice>=0.4.6
 # PyAudio>=0.2.11
 
 # ---- Option moderne (remplace SpeechRecognition si besoin) ----
-openai-whisper>=20231117        # Whisper local d'OpenAI (PyTorch requis)
-streamlit-webrtc==0.75.0
+openai-whisper>=20231117
 torch>=2.0.0
 
+# ---- Streamlit WebRTC ----
+# La version 0.75.0 n'existe pas, installe la dernière compatible avec ta version Python :
+streamlit-webrtc
 
-
-requests>=2.31.0
-python-dotenv>=1.0.0
-gtts>=2.3.2
-langdetect>=1.0.9
-sounddevice>=0.4.6
-scipy>=1.13.0
-numpy>=1.26.4
-SpeechRecognition>=3.10.0
-streamlit>=1.33.0
-PyMuPDF>=1.23.25   # fitz
+# ---- PDF et rapport ----
+PyMuPDF>=1.23.25
 reportlab>=4.0.7
-importlib-metadata>=6.11.0   # pour compatibilité importlib
+
+# ---- Compatibilité importlib ----
+importlib-metadata>=6.11.0

@@ -1,3 +1,14 @@
+streamlit
+python-dotenv
+requests
+numpy
+sounddevice
+scipy
+
+
+
+
+
 # ---- Core ----
 streamlit==1.28.1              # Framework web
 numpy>=1.24.0                  # Manipulation numérique

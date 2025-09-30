@@ -13,6 +13,16 @@ import speech_recognition as sr
 from gtts import gTTS
 from langdetect import detect, DetectorFactory
 from langdetect.lang_detect_exception import LangDetectException
+import random
+
+
+import streamlit as st
+import requests
+import io
+import base64
+import json
+import random
+
 
 # --- Fonctions utilitaires audio/langue ---
 
@@ -30,7 +40,7 @@ def detecter_langue(texte):
     except Exception:
         return "fr"
 
-def parler(texte, langue="auto"):
+def parlers(texte, langue="auto"):
     """Synthèse vocale avec détection automatique de la langue et lecture audio."""
     try:
         if langue == "auto":
@@ -51,49 +61,6 @@ def parler(texte, langue="auto"):
         os.unlink(temp_filename)
     except Exception as e:
         print(f"Erreur lors de la synthèse vocale: {e}")
-
-'''def ecouter(duree_enregistrement=15, frequence_echantillonnage=44100):
-    """Enregistre la voix de l'utilisateur et retourne le texte reconnu."""
-    print("Parlez maintenant...")
-    try:
-        enregistrement = sd.rec(int(duree_enregistrement * frequence_echantillonnage),
-                                samplerate=frequence_echantillonnage,
-                                channels=1, dtype='int16')
-        sd.wait()
-    except Exception as e:
-        print(f"Erreur lors de l'enregistrement: {e}")
-        return ""
-    fichier_temp = "temp_audio.wav"
-    try:
-        write(fichier_temp, frequence_echantillonnage, enregistrement)
-    except Exception as e:
-        print(f"Erreur lors de la sauvegarde: {e}")
-        return ""
-    recognizer = sr.Recognizer()
-    try:
-        with sr.AudioFile(fichier_temp) as source:
-            recognizer.adjust_for_ambient_noise(source)
-            audio_data = recognizer.record(source)
-    except Exception as e:
-        print(f"Erreur lors de la lecture du fichier audio: {e}")
-        return ""
-    try:
-        texte_utilisateur = recognizer.recognize_google(audio_data, language='fr-FR')
-        print(f"Vous avez dit : {texte_utilisateur}")
-        return texte_utilisateur
-    except sr.UnknownValueError:
-        print("Désolé, je n'ai pas compris.")
-        return ""
-    except sr.RequestError as e:
-        print(f"Erreur de service; {e}")
-        return ""
-    finally:
-        try:
-            os.unlink(fichier_temp)
-        except:
-            pass
-'''
-# ...dans la fonction chat_interactif...
 
 def chat_interactif(consignes, modele, point_ia, point_user):
     """Boucle de dialogue interactif affichant tout l'historique."""
@@ -130,6 +97,155 @@ def chat_interactif(consignes, modele, point_ia, point_user):
             st.session_state["chat_history"].append({"role": "ia", "content": reponse_ia})
             parler(reponse_ia)
             st.rerun()
+
+def detecter_langue_simple(texte):
+    """
+    Détection avancée de langue avec support de 33 langues
+    """
+    if not texte or not texte.strip():
+        return "fr"  # Par défaut français
+    
+    texte_lower = texte.lower()
+    
+    # Mots caractéristiques pour chaque langue (avec accents)
+    mots_par_langue = {
+        "fr": ["le", "la", "de", "et", "est", "que", "dans", "pour", "sur", "bonjour", "merci", 
+               "avec", "son", "ses", "mais", "où", "donc", "car", "ni", "ou", "je", "tu", "il"],
+        
+        "en": ["the", "and", "is", "are", "for", "with", "this", "that", "hello", "thank", 
+               "you", "we", "they", "what", "when", "where", "why", "how", "which", "who"],
+        
+        "es": ["el", "la", "de", "y", "en", "que", "por", "con", "hola", "gracias", 
+               "los", "las", "un", "una", "del", "al", "se", "no", "si", "pero"],
+        
+        "de": ["der", "die", "das", "und", "ist", "sind", "für", "mit", "hallo", "danke",
+               "ein", "eine", "den", "dem", "des", "zu", "von", "auf", "aus", "durch"],
+        
+        "it": ["il", "la", "di", "e", "è", "che", "in", "per", "con", "ciao", "grazie",
+               "un", "una", "del", "al", "dal", "nel", "sul", "non", "ma", "o"],
+        
+        "pt": ["o", "a", "de", "e", "é", "que", "em", "para", "com", "olá", "obrigado",
+               "um", "uma", "do", "da", "no", "na", "se", "não", "mas", "ou"],
+        
+        "ar": ["ال", "و", "في", "من", "إلى", "على", "أن", "هذا", "هذه", "مرحبا", "شكرا"],
+        
+        "zh": ["的", "是", "在", "和", "了", "有", "我", "你", "他", "我们", "你好", "谢谢"],
+        
+        "ja": ["の", "は", "に", "を", "が", "で", "と", "も", "です", "ます", "こんにちは", "ありがとう"],
+        
+        "ru": ["и", "в", "не", "на", "я", "он", "что", "это", "с", "по", "привет", "спасибо"],
+        
+        "nl": ["de", "het", "en", "is", "van", "een", "voor", "met", "hallo", "dank", 
+               "je", "we", "ze", "er", "om", "maar", "of", "dan", "ook", "al"],
+        
+        "el": ["και", "το", "της", "του", "να", "ειναι", "για", "σε", "γεια", "ευχαριστω",
+               "ο", "η", "τα", "με", "απο", "πως", "που", "αυτο", "αυτη", "αυτα"],
+        
+        "la": ["et", "in", "non", "est", "sed", "ad", "ex", "cum", "salve", "gratias",
+               "quod", "qui", "quae", "quo", "ab", "de", "per", "pro", "sine", "sub"],
+        
+        "tr": ["ve", "bir", "bu", "şey", "için", "ile", "ama", "değil", "merhaba", "teşekkür",
+               "ben", "sen", "o", "biz", "siz", "onlar", "ne", "nasıl", "niçin", "nerede"],
+        
+        "pl": ["i", "w", "nie", "się", "na", "jest", "dla", "z", "cześć", "dziękuję",
+               "to", "co", "jak", "że", "po", "od", "do", "przez", "o", "za"],
+        
+        "sv": ["och", "i", "att", "är", "för", "med", "en", "ett", "hej", "tack",
+               "det", "som", "av", "på", "vi", "de", "har", "inte", "om", "men"],
+        
+        "da": ["og", "i", "at", "er", "for", "med", "en", "et", "hej", "tak",
+               "det", "som", "af", "på", "vi", "de", "har", "ikke", "om", "men"],
+        
+        "fi": ["ja", "on", "ei", "se", "että", "mutta", "kun", "niin", "hei", "kiitos",
+               "minä", "sinä", "hän", "me", "te", "he", "tämä", "tuo", "nämä", "nuo"],
+        
+        "no": ["og", "i", "er", "for", "med", "en", "et", "hei", "takk", "det",
+               "som", "av", "på", "vi", "de", "har", "ikke", "om", "men", "eller"],
+        
+        "ko": ["와", "과", "이", "가", "은", "는", "을", "를", "안녕", "감사", "합니다",
+               "나는", "너는", "그는", "우리는", "그들은", "무엇", "어떻게", "왜", "어디"],
+        
+        "hi": ["और", "में", "है", "के", "लिए", "साथ", "एक", "नमस्ते", "धन्यवाद", "मैं",
+               "तुम", "वह", "हम", "वे", "क्या", "कैसे", "क्यों", "कहाँ", "जो", "यह"],
+        
+        "vi": ["và", "trong", "là", "của", "cho", "với", "một", "xin chào", "cảm ơn", "tôi",
+               "bạn", "anh", "chị", "chúng tôi", "họ", "gì", "như thế nào", "tại sao", "ở đâu"],
+        
+        "th": ["และ", "ใน", "คือ", "ของ", "เพื่อ", "กับ", "สวัสดี", "ขอบคุณ", "ฉัน", "คุณ",
+               "เขา", "เรา", "พวกเขา", "อะไร", "อย่างไร", "ทำไม", "ที่ไหน", "ซึ่ง", "นี้"],
+        
+        "ro": ["și", "în", "este", "pentru", "cu", "un", "o", "salut", "mulțumesc", "eu",
+               "tu", "el", "ea", "noi", "voi", "ei", "ce", "cum", "de ce", "unde"],
+        
+        "cs": ["a", "v", "je", "pro", "s", "se", "ahoj", "děkuji", "já", "ty",
+               "on", "ona", "my", "vy", "oni", "co", "jak", "proč", "kde", "který"],
+        
+        "hu": ["és", "a", "az", "van", "nem", "hogy", "egy", "szia", "köszönöm", "én",
+               "te", "ő", "mi", "ti", "ők", "mi", "hogyan", "miért", "hol", "ami"],
+        
+        "sr": ["и", "у", "је", "за", "са", "здраво", "хвала", "ја", "ти", "он",
+               "она", "ми", "ви", "они", "шта", "како", "зашто", "где", "који"],
+        
+        "hr": ["i", "u", "je", "za", "s", "bok", "hvala", "ja", "ti", "on",
+               "ona", "mi", "vi", "oni", "što", "kako", "zašto", "gdje", "koji"],
+        
+        "sk": ["a", "v", "je", "pre", "s", "ahoj", "ďakujem", "ja", "ty", "on",
+               "ona", "my", "vy", "oni", "čo", "ako", "prečo", "kde", "ktorý"],
+        
+        "bg": ["и", "в", "е", "за", "с", "здравей", "благодаря", "аз", "ти", "той",
+               "тя", "ние", "вие", "те", "какво", "как", "защо", "къде", "който"],
+        
+        "uk": ["і", "в", "не", "на", "я", "це", "що", "для", "з", "привіт", "дякую",
+               "ти", "він", "вона", "ми", "ви", "вони", "що", "як", "чому", "де"],
+        
+        "fa": ["و", "در", "است", "برای", "با", "یک", "سلام", "متشکرم", "من", "تو",
+               "او", "ما", "شما", "آنها", "چه", "چگونه", "چرا", "کجا", "که"],
+        
+        "he": ["ו", "ב", "את", "הוא", "היא", "זה", "זו", "של", "עם", "שלום", "תודה",
+               "אני", "אתה", "את", "אנחנו", "אתם", "הם", "מה", "איך", "למה", "איפה"]
+    }
+    
+    # Compter les occurrences pour chaque langue
+    scores = {}
+    for langue, mots in mots_par_langue.items():
+        score = sum(1 for mot in mots if mot in texte_lower)
+        scores[langue] = score
+    
+    # Trouver la langue avec le score le plus élevé
+    langue_detectee = max(scores, key=scores.get)
+    score_max = scores[langue_detectee]
+    
+    # Si le score est trop faible, utiliser la langue par défaut
+    if score_max < 1:
+        return "fr"
+    
+    return langue_detectee
+
+def generer_reponse_intelligente(message_utilisateur, point_ia, point_user, langue_du_texte):
+    """Génère des réponses contextuelles intelligentes"""
+    
+    #langue = detecter_langue_simple(message_utilisateur)
+
+    st.session_state["chat_history"].append({"role": "user", "content": message_utilisateur})
+    # Prépare la consigne pour l'IA
+    consigne_ia = (
+        f"Tu es un professeur qui défend le point de vue suivant : {point_ia} dans {langue_du_texte}.\n"
+        f"L'utilisateur défend ce point de vue : {message_utilisateur}.\n"
+        f"Réponds brièvement (3-4 phrases max, 250 mots max), en restant courtois et en argumentant uniquement pour ton point de vue.\n"
+        "Evite les répétitions inutiles et d'être redondant ou même hors sujet et vague.\n"
+        "Donne des exemples concrets et pertinents pour illustrer tes arguments.\n"
+        f"Ne change jamais de position, même si l'utilisateur insiste.\n"
+        "Si le point de vue de l'utilisateur est valide, reconnais-le brièvement mais réaffirme ton propre point de vue.\n"
+        "Si l'utilisateur dévie du sujet, ramène-le poliment à la question principale.\n"
+        f"Réponds dans la langue du débat."
+        f"Si l'utilisateur s'exprime dans une autre langue differente de celle du débat, réponds dans la langue du débat que tu ne comprends pas ce qu'il dit et ramene le dans la langue du débat."
+    )
+    # Appel du modèle
+    reponse_ia = reponse(consigne_ia, message_utilisateur)
+    #parler(reponse_ia)
+    #st.rerun()
+    return reponse_ia
+
 
 def compute_global_score(correction_text):
     details = []
@@ -336,7 +452,7 @@ def generer_exercice(langue, niveau, type_exercice):
             "✓ Vérifier que chaque question et ses options respectent le formatage\n"
             "✓ Vérifier que l’espacement est régulier et lisible\n\n"
             "⚠️ GÉNÈRE UNIQUEMENT des QCM de grammaire sous forme de phrases à compléter, "
-            "dans le format indiqué ci-dessus, sans aucun ajout, commentaire ou explication supplémentaire."
+            "dans le format sans aucun ajout, commentaire ou explication supplémentaire."
         )
 
     elif type_exercice == "Vocabulaire":
@@ -673,14 +789,49 @@ def render_interactive_exercises(type_exercice, langue, niveau, langue_parlee):
                     st.session_state["point_user"] = choix
                     st.session_state["chat_history"] = []
                     st.session_state["chat_started"] = True
+                    st.session_state["debat_started"] = True  # Active le mode débat vocal
                     st.rerun()
-        if st.session_state.get("chat_started"):
-            chat_interactif(
-                consignes="",
-                modele=st.session_state.get("modele", "openrouter/sonoma-sky-alpha"),
-                point_ia=st.session_state.get("point_ia", ""),
-                point_user=st.session_state.get("point_user", "")
-            )
+                    
+                    
+        ####################################################################################            ################################################
+        if st.session_state.get("debat_started"):
+            bloc = parse_dialogue_interactif(generated_text)
+            langue_du_texte = detecter_langue(bloc)
+
+            st.markdown("---")
+            st.info(f"L'IA défend le point de vue : **{st.session_state['point_ia']}**\n\nVous défendez : **{st.session_state['point_user']}**")
+            st.markdown("---")
+            for msg in st.session_state.get("chat_history", []):
+                if msg["role"] == "user":
+                    st.markdown(f"**Vous :** {msg['content']}")
+                elif msg["role"] == "ia" and not msg.get("audio_played", False):
+                    # N'affiche pas le texte tant que l'audio n'est pas joué
+                    continue
+                else:
+                    st.markdown(f"**IA :** {msg['content']}")
+            user_input = st.text_input("Votre message :", key="chat_input")
+            if st.button("📤 Envoyer", key="btn_envoyer"):
+                if user_input:
+                    st.session_state["chat_history"].append({"role": "user", "content": user_input})
+                    # Génère la réponse IA
+                    reponse_ia = generer_reponse_intelligente(
+                        user_input,
+                        st.session_state["point_ia"],
+                        st.session_state["point_user"],
+                        langue_du_texte
+                    )
+                    # Ajoute la réponse IA mais ne l'affiche pas encore
+                    st.session_state["chat_history"].append({"role": "ia", "content": reponse_ia, "audio_played": False})
+                    st.rerun()
+            # Si une réponse IA attend d'être jouée
+            if st.session_state.get("chat_history") and st.session_state["chat_history"][-1]["role"] == "ia" and not st.session_state["chat_history"][-1].get("audio_played", False):
+                reponse_ia = st.session_state["chat_history"][-1]["content"]
+                langue_ia = detecter_langue(reponse_ia)
+                texte_audio = reponse_ia
+                #if st.button("🔊 Écouter la réponse audio", key="btn_play_audio"):
+                parlers(texte_audio, langue_ia)
+                st.session_state["chat_history"][-1]["audio_played"] = True
+                st.rerun()
         return
 
 # ...existing code...
@@ -735,6 +886,8 @@ def main():
         # Passe les variables nécessaires à la fonction
         render_interactive_exercises(type_exercice, langue, niveau, langue_parlee)
 
-# Utilisation :
+    # Dialogue interactif : génération du texte + analyse des points de vue + discussion vocale
+    
+
 if __name__ == "__main__":
     main()
